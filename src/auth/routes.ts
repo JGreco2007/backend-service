@@ -6,7 +6,7 @@ import { createDrizzleUserStore } from "../db/userStore";
 import { type AuthenticatedRequest, requireAuth } from "./middleware";
 import { loginRateLimiters, passwordResetRateLimiters, registerRateLimiters } from "./rateLimit";
 import * as authService from "./service";
-import { AuthError, type AuthDeps } from "./service";
+import type { AuthDeps } from "./service";
 
 const deps: AuthDeps = {
   users: createDrizzleUserStore(),
@@ -41,14 +41,6 @@ function clearRefreshCookie(res: Response): void {
   res.clearCookie(REFRESH_COOKIE_NAME, { path: "/auth" });
 }
 
-function handleAuthError(err: unknown, res: Response): boolean {
-  if (err instanceof AuthError) {
-    res.status(err.statusCode).json({ error: err.message });
-    return true;
-  }
-  return false;
-}
-
 export const authRouter = Router();
 
 authRouter.post("/register", ...registerRateLimiters, async (req, res, next) => {
@@ -62,7 +54,7 @@ authRouter.post("/register", ...registerRateLimiters, async (req, res, next) => 
     setRefreshCookie(res, rawRefreshToken);
     res.status(201).json({ accessToken });
   } catch (err) {
-    if (!handleAuthError(err, res)) next(err);
+    next(err);
   }
 });
 
@@ -77,7 +69,7 @@ authRouter.post("/login", ...loginRateLimiters, async (req, res, next) => {
     setRefreshCookie(res, rawRefreshToken);
     res.json({ accessToken });
   } catch (err) {
-    if (!handleAuthError(err, res)) next(err);
+    next(err);
   }
 });
 
@@ -91,7 +83,7 @@ authRouter.post("/refresh", async (req, res, next) => {
     const { accessToken } = await authService.refreshAccessToken(deps, { rawRefreshToken });
     res.json({ accessToken });
   } catch (err) {
-    if (!handleAuthError(err, res)) next(err);
+    next(err);
   }
 });
 
@@ -104,7 +96,7 @@ authRouter.post("/logout", async (req, res, next) => {
     clearRefreshCookie(res);
     res.status(204).send();
   } catch (err) {
-    if (!handleAuthError(err, res)) next(err);
+    next(err);
   }
 });
 
@@ -114,7 +106,7 @@ authRouter.post("/logout-all-devices", requireAuth, async (req: AuthenticatedReq
     clearRefreshCookie(res);
     res.status(204).send();
   } catch (err) {
-    if (!handleAuthError(err, res)) next(err);
+    next(err);
   }
 });
 
@@ -132,7 +124,7 @@ authRouter.patch("/password", requireAuth, async (req: AuthenticatedRequest, res
     clearRefreshCookie(res);
     res.status(204).send();
   } catch (err) {
-    if (!handleAuthError(err, res)) next(err);
+    next(err);
   }
 });
 
@@ -147,7 +139,7 @@ authRouter.patch("/email", requireAuth, async (req: AuthenticatedRequest, res, n
     clearRefreshCookie(res);
     res.status(204).send();
   } catch (err) {
-    if (!handleAuthError(err, res)) next(err);
+    next(err);
   }
 });
 
@@ -163,7 +155,7 @@ authRouter.post("/password-reset/request", ...passwordResetRateLimiters, async (
     // endpoint be used to enumerate accounts.
     res.status(202).json({ message: "If that email is registered, a reset link has been sent." });
   } catch (err) {
-    if (!handleAuthError(err, res)) next(err);
+    next(err);
   }
 });
 
@@ -177,7 +169,7 @@ authRouter.post("/password-reset/confirm", ...passwordResetRateLimiters, async (
     await authService.confirmPasswordReset(deps, { rawToken: token, newPassword });
     res.status(204).send();
   } catch (err) {
-    if (!handleAuthError(err, res)) next(err);
+    next(err);
   }
 });
 

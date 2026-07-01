@@ -3,6 +3,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -119,6 +120,26 @@ export const passwordResetTokens = pgTable(
     uniqueIndex("password_reset_tokens_token_hash_idx").on(table.tokenHash),
     index("password_reset_tokens_user_id_idx").on(table.userId),
   ]
+);
+
+export const idempotencyKeys = pgTable(
+  "idempotency_keys",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // Client-supplied Idempotency-Key header value.
+    key: varchar("key", { length: 255 }).notNull(),
+    // sha256(route + canonicalized body) — detects the same key being
+    // reused for a materially different request, which is a client bug,
+    // not a legitimate retry.
+    requestHash: varchar("request_hash", { length: 64 }).notNull(),
+    // Null until the original request finishes — lets a concurrent request
+    // with the same key see "still in flight" instead of racing the handler.
+    responseStatus: integer("response_status"),
+    responseBody: jsonb("response_body"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("idempotency_keys_key_idx").on(table.key)]
 );
 
 export const usersRelations = relations(users, ({ many }) => ({

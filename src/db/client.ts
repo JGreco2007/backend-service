@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { config } from "../config";
@@ -21,3 +22,8 @@ const client = postgres(withStatementTimeout(config.DATABASE_URL, config.DB_STAT
 });
 
 export const db = drizzle(client, { schema });
+
+/** Cheapest possible query — used by the readiness check, nothing else. */
+export async function checkDatabase(): Promise<void> {
+  await db.execute(sql`select 1`);
+}

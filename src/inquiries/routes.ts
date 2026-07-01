@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../auth/middleware";
+import { idempotent } from "../http/idempotency/idempotent";
+import type { IdempotencyStore } from "../http/idempotency/idempotencyStore";
 import { pickAllowed } from "../http/pickAllowed";
 import { requireOwnership, type RequestWithResource } from "../http/requireOwnership";
 import type { PropertyStore } from "../properties/propertyStore";
@@ -10,7 +12,11 @@ import {
   type InquiryUpdateInput,
 } from "./inquiryStore";
 
-export function createInquiriesRouter(deps: { inquiries: InquiryStore; properties: PropertyStore }) {
+export function createInquiriesRouter(deps: {
+  inquiries: InquiryStore;
+  properties: PropertyStore;
+  idempotency: IdempotencyStore;
+}) {
   const router = Router();
 
   const loadOwnedInquiry = async (id: string) => {
@@ -27,7 +33,10 @@ export function createInquiriesRouter(deps: { inquiries: InquiryStore; propertie
   };
 
   // Public: the site's contact form posts here directly, no auth involved.
-  router.post("/", async (req, res, next) => {
+  // Idempotent so a double-click or a client-side retry on a flaky
+  // connection never creates (and eventually emails an agent about) the
+  // same lead twice.
+  router.post("/", idempotent(deps.idempotency, "POST /api/inquiries"), async (req, res, next) => {
     try {
       const { name, email, propertyId, phone, message } = req.body ?? {};
       if (typeof name !== "string" || typeof email !== "string") {

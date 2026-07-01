@@ -9,7 +9,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   public.properties,
   public.inquiries,
   public.refresh_tokens,
-  public.password_reset_tokens
+  public.password_reset_tokens,
+  public.idempotency_keys
 TO app_user;
 
 -- All tables use UUID primary keys (gen_random_uuid()), not serial/identity

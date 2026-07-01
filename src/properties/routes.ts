@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { type AuthenticatedRequest, requireAuth } from "../auth/middleware";
+import { idempotent } from "../http/idempotency/idempotent";
+import type { IdempotencyStore } from "../http/idempotency/idempotencyStore";
 import { pickAllowed } from "../http/pickAllowed";
 import { requireOwnership, type RequestWithResource } from "../http/requireOwnership";
 import {
@@ -9,7 +11,7 @@ import {
   type PropertyUpdateInput,
 } from "./propertyStore";
 
-export function createPropertiesRouter(deps: { properties: PropertyStore }) {
+export function createPropertiesRouter(deps: { properties: PropertyStore; idempotency: IdempotencyStore }) {
   const router = Router();
 
   const loadOwnedProperty = async (id: string) => {
@@ -17,7 +19,9 @@ export function createPropertiesRouter(deps: { properties: PropertyStore }) {
     return record ? { record, ownerId: record.createdBy } : null;
   };
 
-  router.post("/", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  // Creating a listing is a side effect a network-retried request should
+  // never duplicate — same reasoning as an order or a payment.
+  router.post("/", requireAuth, idempotent(deps.idempotency, "POST /api/properties"), async (req: AuthenticatedRequest, res, next) => {
     try {
       const { title, priceCents } = req.body ?? {};
       if (typeof title !== "string" || typeof priceCents !== "number") {

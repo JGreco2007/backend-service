@@ -69,6 +69,16 @@ const baseSchema = z.object({
   // else in this app qualifies yet (no search/export/upload endpoints exist).
   RATE_LIMIT_ADMIN_LIST_MAX: z.coerce.number().int().positive().default(30),
   RATE_LIMIT_ADMIN_LIST_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
+
+  // Bounds how long the readiness check waits on its DB ping before
+  // reporting unhealthy, and the default budget for any future outbound
+  // HTTP call made via fetchWithTimeout.
+  HEALTH_CHECK_DB_TIMEOUT_MS: z.coerce.number().int().positive().default(2000),
+  OUTBOUND_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+
+  // How long an Idempotency-Key is remembered before a repeat request with
+  // the same key is treated as brand new.
+  IDEMPOTENCY_KEY_TTL_HOURS: z.coerce.number().int().positive().default(24),
 });
 
 /**

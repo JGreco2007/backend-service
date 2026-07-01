@@ -1,4 +1,6 @@
 import { config } from "../config";
+import { HttpError } from "../http/httpError";
+import { logger } from "../logging/logger";
 import { signAccessToken } from "./jwt";
 import { hashPassword, verifyPassword } from "./password";
 import type { PasswordResetStore } from "./passwordResetStore";
@@ -12,11 +14,12 @@ export interface AuthDeps {
   passwordResets: PasswordResetStore;
 }
 
-export class AuthError extends Error {
-  statusCode: number;
+// A safe, client-facing auth failure (wrong password, unknown token, ...) —
+// distinct from an HttpError raised elsewhere only in that it defaults to
+// 401, since that's by far the most common case for this module.
+export class AuthError extends HttpError {
   constructor(message: string, statusCode = 401) {
-    super(message);
-    this.statusCode = statusCode;
+    super(message, statusCode);
   }
 }
 
@@ -116,9 +119,19 @@ export async function requestPasswordReset(deps: AuthDeps, params: { email: stri
     tokenHash: hashToken(rawToken),
     expiresAt: passwordResetExpiry(),
   });
-  // TODO: send via a real email provider once one is configured. Logged here
-  // so the flow is exercisable in local dev without one.
-  console.log(`[password-reset] token for ${user.email}: ${rawToken}`);
+  // TODO: send via a real email provider once one is configured. The raw
+  // token is a secret — equivalent to a password — so it must never go
+  // through the app's structured logger (which may ship to an aggregator
+  // retained/searched well beyond this one request). In local dev, where
+  // there's no provider to deliver it, print it directly to the terminal
+  // instead so the flow stays testable. Everywhere else, log that a reset
+  // was requested (without the token) so a missing provider is visible as
+  // an operational gap rather than a silent no-op.
+  if (config.NODE_ENV === "local") {
+    process.stdout.write(`[password-reset:dev-only] token for ${user.email}: ${rawToken}\n`);
+  } else {
+    logger.error({ userId: user.id }, "password reset requested but no email provider is configured");
+  }
 }
 
 export async function confirmPasswordReset(deps: AuthDeps, params: { rawToken: string; newPassword: string }) {
