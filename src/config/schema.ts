@@ -4,10 +4,19 @@ import { z } from "zod";
  * Vars every environment must provide.
  */
 const baseSchema = z.object({
-  NODE_ENV: z.enum(["local", "staging", "production"]),
+  // "test" is included because test runners (vitest, jest, etc.) set
+  // NODE_ENV=test automatically — it has the same requirements as "local".
+  NODE_ENV: z.enum(["local", "test", "staging", "production"]),
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
+  // HS256 signing key. 32+ chars (256 bits hex-encoded = 64 chars) so brute
+  // forcing the secret isn't cheaper than brute forcing the token itself.
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
+  JWT_ISSUER: z.string().min(1).default("backend-service"),
+  JWT_AUDIENCE: z.string().min(1).default("backend-service-clients"),
+  ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900), // 15 min
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  PASSWORD_RESET_TOKEN_TTL_MINUTES: z.coerce.number().int().positive().default(30),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 
   // Connection pool sizing — bounds how many concurrent connections one
@@ -39,6 +48,7 @@ const productionSchema = deployedSchema.extend({
 
 export const schemaForEnv = {
   local: baseSchema,
+  test: baseSchema,
   staging: deployedSchema,
   production: productionSchema,
 } as const;

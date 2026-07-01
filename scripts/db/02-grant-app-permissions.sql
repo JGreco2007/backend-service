@@ -4,9 +4,15 @@
 
 -- Row-level CRUD only, on exactly the tables the app needs. No DDL rights
 -- (no CREATE/ALTER/DROP), so a compromised app process can't change schema.
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.users, public.properties, public.inquiries TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON
+  public.users,
+  public.properties,
+  public.inquiries,
+  public.refresh_tokens,
+  public.password_reset_tokens
+TO app_user;
 
--- All three tables use UUID primary keys (gen_random_uuid()), not
--- serial/identity columns, so there are no sequences to grant here today.
--- If a future table adds a serial/identity column, also run:
+-- All tables use UUID primary keys (gen_random_uuid()), not serial/identity
+-- columns, so there are no sequences to grant here today. If a future table
+-- adds a serial/identity column, also run:
 --   GRANT USAGE ON SEQUENCE <sequence_name> TO app_user;

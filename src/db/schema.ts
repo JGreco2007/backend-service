@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
   numeric,
@@ -75,8 +76,59 @@ export const inquiries = pgTable(
   ]
 );
 
+export const refreshTokens = pgTable(
+  "refresh_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // SHA-256 hash of the opaque refresh token — the raw token is only ever
+    // seen by the client (in the httpOnly cookie); we never store it.
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    revoked: boolean("revoked").notNull().default(false),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // /refresh looks up by hash on every call.
+    uniqueIndex("refresh_tokens_token_hash_idx").on(table.tokenHash),
+    // logout-all-devices and "revoke on password/email change" both do
+    // WHERE user_id = ... AND revoked = false.
+    index("refresh_tokens_user_id_idx").on(table.userId),
+  ]
+);
+
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("password_reset_tokens_token_hash_idx").on(table.tokenHash),
+    index("password_reset_tokens_user_id_idx").on(table.userId),
+  ]
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   properties: many(properties),
+  refreshTokens: many(refreshTokens),
+  passwordResetTokens: many(passwordResetTokens),
+}));
+
+export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
+  user: one(users, { fields: [refreshTokens.userId], references: [users.id] }),
+}));
+
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+  user: one(users, { fields: [passwordResetTokens.userId], references: [users.id] }),
 }));
 
 export const propertiesRelations = relations(properties, ({ one, many }) => ({
