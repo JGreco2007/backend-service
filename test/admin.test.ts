@@ -63,4 +63,21 @@ describe("admin-only endpoints", () => {
     expect(promote.status).toBe(200);
     expect(promote.body.role).toBe("admin");
   });
+
+  it("clamps an oversized requested pageSize instead of returning it unbounded", async () => {
+    const admin = await createUserAndToken(users, "admin");
+    for (let i = 0; i < 5; i++) {
+      await createUserAndToken(users, "agent");
+    }
+
+    const res = await request(app)
+      .get("/api/admin/users")
+      .query({ pageSize: 999999 })
+      .set("Authorization", `Bearer ${admin.token}`);
+
+    expect(res.status).toBe(200);
+    // Clamped to config.MAX_PAGE_SIZE (100 by default), not the requested 999999.
+    expect(res.body.pageSize).toBeLessThan(999999);
+    expect(res.body.pageSize).toBeLessThanOrEqual(100);
+  });
 });

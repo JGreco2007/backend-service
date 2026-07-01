@@ -4,7 +4,7 @@ import { createDrizzlePasswordResetStore } from "../db/passwordResetStore";
 import { createDrizzleRefreshTokenStore } from "../db/refreshTokenStore";
 import { createDrizzleUserStore } from "../db/userStore";
 import { type AuthenticatedRequest, requireAuth } from "./middleware";
-import { loginRateLimiter, passwordResetRateLimiter } from "./rateLimit";
+import { loginRateLimiters, passwordResetRateLimiters, registerRateLimiters } from "./rateLimit";
 import * as authService from "./service";
 import { AuthError, type AuthDeps } from "./service";
 
@@ -51,7 +51,7 @@ function handleAuthError(err: unknown, res: Response): boolean {
 
 export const authRouter = Router();
 
-authRouter.post("/register", async (req, res, next) => {
+authRouter.post("/register", ...registerRateLimiters, async (req, res, next) => {
   try {
     const { email, password } = req.body ?? {};
     if (typeof email !== "string" || !isValidNewPassword(password)) {
@@ -66,7 +66,7 @@ authRouter.post("/register", async (req, res, next) => {
   }
 });
 
-authRouter.post("/login", loginRateLimiter, async (req, res, next) => {
+authRouter.post("/login", ...loginRateLimiters, async (req, res, next) => {
   try {
     const { email, password } = req.body ?? {};
     if (typeof email !== "string" || typeof password !== "string") {
@@ -151,7 +151,7 @@ authRouter.patch("/email", requireAuth, async (req: AuthenticatedRequest, res, n
   }
 });
 
-authRouter.post("/password-reset/request", passwordResetRateLimiter, async (req, res, next) => {
+authRouter.post("/password-reset/request", ...passwordResetRateLimiters, async (req, res, next) => {
   try {
     const { email } = req.body ?? {};
     if (typeof email !== "string") {
@@ -167,7 +167,7 @@ authRouter.post("/password-reset/request", passwordResetRateLimiter, async (req,
   }
 });
 
-authRouter.post("/password-reset/confirm", passwordResetRateLimiter, async (req, res, next) => {
+authRouter.post("/password-reset/confirm", ...passwordResetRateLimiters, async (req, res, next) => {
   try {
     const { token, newPassword } = req.body ?? {};
     if (typeof token !== "string" || !isValidNewPassword(newPassword)) {

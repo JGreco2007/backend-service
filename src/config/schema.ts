@@ -27,6 +27,48 @@ const baseSchema = z.object({
   // Server-side per-query timeout, applied via the Postgres `options` startup
   // parameter so it's enforced by Postgres itself, not just the client.
   DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+
+  // How many hops of X-Forwarded-For to trust when deriving the real client
+  // IP (Express's `trust proxy`). Wrong in either direction is a real bug:
+  // too low and every client behind the LB looks like the same IP (rate
+  // limiting becomes global); too high and a client can spoof their own
+  // X-Forwarded-For entry to bypass IP-based limits entirely. Set this to
+  // the exact number of reverse proxies between the client and this process.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
+
+  // Hard cap on request body size — independent of any per-field validation,
+  // so a client can't exhaust memory/CPU with an oversized payload before
+  // that validation even runs.
+  BODY_SIZE_LIMIT: z.string().min(1).default("100kb"),
+
+  // Pagination: a client-supplied pageSize is clamped to this regardless of
+  // what it asks for, so no endpoint can be made to return unbounded rows.
+  DEFAULT_PAGE_SIZE: z.coerce.number().int().positive().default(20),
+  MAX_PAGE_SIZE: z.coerce.number().int().positive().default(100),
+
+  // General limits applied to every request, on two independent axes: the
+  // caller's IP (catches abuse from a single source regardless of account)
+  // and, when authenticated, their account id (catches a single compromised
+  // or malicious account spread across many IPs/devices).
+  RATE_LIMIT_GENERAL_IP_MAX: z.coerce.number().int().positive().default(300),
+  RATE_LIMIT_GENERAL_IP_WINDOW_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
+  RATE_LIMIT_GENERAL_ACCOUNT_MAX: z.coerce.number().int().positive().default(600),
+  RATE_LIMIT_GENERAL_ACCOUNT_WINDOW_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
+
+  // Stricter limits for brute-force-able endpoints (login, register,
+  // password-reset request), applied on both the caller's IP and the
+  // account/email being targeted — so an attacker can't get around one axis
+  // by spreading requests across the other.
+  RATE_LIMIT_AUTH_IP_MAX: z.coerce.number().int().positive().default(20),
+  RATE_LIMIT_AUTH_IP_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  RATE_LIMIT_AUTH_IDENTIFIER_MAX: z.coerce.number().int().positive().default(5),
+  RATE_LIMIT_AUTH_IDENTIFIER_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+
+  // Tighter limit for the app's one currently-expensive endpoint: the
+  // unpaginated-by-default admin user listing. See summary for why nothing
+  // else in this app qualifies yet (no search/export/upload endpoints exist).
+  RATE_LIMIT_ADMIN_LIST_MAX: z.coerce.number().int().positive().default(30),
+  RATE_LIMIT_ADMIN_LIST_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
 });
 
 /**

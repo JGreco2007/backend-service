@@ -28,8 +28,8 @@ export function createDrizzleUserStore(): UserStore {
       await db.update(users).set({ email, updatedAt: new Date() }).where(eq(users.id, id));
     },
 
-    async listAll(): Promise<UserRecord[]> {
-      return db.select().from(users);
+    async listAll({ limit, offset }): Promise<UserRecord[]> {
+      return db.select().from(users).limit(limit).offset(offset);
     },
 
     async updateRole(id, role): Promise<UserRecord | null> {

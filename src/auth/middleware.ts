@@ -30,3 +30,25 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
     next(err);
   }
 }
+
+/**
+ * Identifies the caller if a valid access token is present, but never
+ * rejects the request — unlike requireAuth. Used ahead of routing (before
+ * any router decides whether a route even requires auth) so the general
+ * per-account rate limiter can key by account id when one's available,
+ * while still letting anonymous requests through to routes that allow them.
+ */
+export async function attachUserIfPresent(req: AuthenticatedRequest, _res: Response, next: NextFunction): Promise<void> {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) {
+    try {
+      const payload = await verifyAccessToken(header.slice("Bearer ".length));
+      req.user = { id: payload.sub, role: payload.role };
+    } catch {
+      // Not our job to reject here — an invalid/expired token just means
+      // this request is treated as anonymous for rate-limiting purposes.
+      // requireAuth (on routes that need it) will reject it properly.
+    }
+  }
+  next();
+}

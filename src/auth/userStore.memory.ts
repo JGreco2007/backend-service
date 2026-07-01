@@ -28,8 +28,8 @@ export function createInMemoryUserStore(seed: UserRecord[] = []): UserStore {
       const row = rowsById.get(id);
       if (row) row.email = email;
     },
-    async listAll() {
-      return Array.from(rowsById.values());
+    async listAll({ limit, offset }) {
+      return Array.from(rowsById.values()).slice(offset, offset + limit);
     },
     async updateRole(id, role) {
       const row = rowsById.get(id);
