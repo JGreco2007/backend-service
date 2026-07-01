@@ -9,6 +9,15 @@ const baseSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+
+  // Connection pool sizing — bounds how many concurrent connections one
+  // process can hold, so a spike in slow queries can't starve the DB.
+  DB_POOL_MAX: z.coerce.number().int().positive().default(10),
+  DB_IDLE_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(30),
+  DB_CONNECT_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(10),
+  // Server-side per-query timeout, applied via the Postgres `options` startup
+  // parameter so it's enforced by Postgres itself, not just the client.
+  DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
 });
 
 /**
@@ -16,7 +25,7 @@ const baseSchema = z.object({
  */
 const deployedSchema = baseSchema.extend({
   CORS_ORIGIN: z.string().min(1, "CORS_ORIGIN is required"),
-  SENTRY_DSN: z.string().url("SENTRY_DSN must be a valid URL"),
+  SENTRY_DSN: z.url("SENTRY_DSN must be a valid URL"),
 });
 
 /**
