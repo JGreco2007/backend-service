@@ -1,0 +1,12 @@
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo ""
+  echo "pre-commit blocked: gitleaks is not installed."
+  echo "Install it, then retry your commit:"
+  echo "  macOS:   brew install gitleaks"
+  echo "  Windows: winget install gitleaks.gitleaks  (or: scoop install gitleaks)"
+  echo "  Linux:   see https://github.com/gitleaks/gitleaks#installing"
+  echo ""
+  exit 1
+fi
+
+gitleaks protect --staged --redact --config .gitleaks.toml
