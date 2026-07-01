@@ -1,0 +1,59 @@
+name: Deploy
+
+# Only runs after a merge lands on main — never on a PR. Branch protection
+# (see repo settings) already requires CI to pass before that merge can
+# happen, so by the time this fires, tests/secret-scan/dependency-audit are
+# all known-green for this commit.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false # never cancel a deploy that's already in flight
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  deploy-staging:
+    name: deploy-staging
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to staging
+        run: |
+          echo "No hosting provider has been chosen yet for this app."
+          echo "Replace this step with the real deploy command once one is —"
+          echo "  Render:  curl a deploy hook URL stored in secrets.RENDER_STAGING_DEPLOY_HOOK"
+          echo "  Fly.io:  flyctl deploy --app <staging-app> --config fly.staging.toml"
+          echo "  Railway: railway up --service <staging-service>"
+          echo "Failing on purpose so this doesn't silently pretend to have deployed."
+          exit 1
+
+  deploy-production:
+    name: deploy-production
+    # Only proceeds if staging succeeded — this is what makes "staging
+    # first" an actual gate rather than just a suggestion. The `production`
+    # GitHub Environment below also requires manual approval, so a human
+    # signs off even after staging is green.
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to production
+        run: |
+          echo "Same as staging — replace with the real deploy command for prod."
+          exit 1

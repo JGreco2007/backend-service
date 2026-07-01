@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:grant": "tsx scripts/db/run-sql.ts scripts/db/02-grant-app-permissions.sql",
     "db:studio": "drizzle-kit studio",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",

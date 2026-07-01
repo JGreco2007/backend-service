@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same PR/branch instead of letting them pile up.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      # Placeholder values only — no real database or secret is used or
+      # needed. The full test suite runs against in-memory store fakes, not
+      # a live Postgres instance, so DATABASE_URL is never actually
+      # connected to; it only has to satisfy config validation at import
+      # time. JWT_SECRET just needs to be 32+ chars for the same reason.
+      DATABASE_URL: postgres://placeholder:placeholder@localhost:5432/placeholder
+      JWT_SECRET: ci-placeholder-jwt-secret-not-a-real-credential-ok
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # gitleaks needs full history, not just the merge commit
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-audit:
+    name: dependency-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Fails (non-zero exit) if npm's advisory database reports any
+      # high-or-above severity vulnerability — that failure is what makes
+      # this a blocking required check, not just an informational report.
+      - run: npm audit --audit-level=high
