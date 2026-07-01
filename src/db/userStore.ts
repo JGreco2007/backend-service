@@ -27,5 +27,18 @@ export function createDrizzleUserStore(): UserStore {
     async updateEmail(id, email): Promise<void> {
       await db.update(users).set({ email, updatedAt: new Date() }).where(eq(users.id, id));
     },
+
+    async listAll(): Promise<UserRecord[]> {
+      return db.select().from(users);
+    },
+
+    async updateRole(id, role): Promise<UserRecord | null> {
+      const [row] = await db
+        .update(users)
+        .set({ role: role as "admin" | "agent", updatedAt: new Date() })
+        .where(eq(users.id, id))
+        .returning();
+      return row ?? null;
+    },
   };
 }

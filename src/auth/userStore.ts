@@ -11,4 +11,6 @@ export interface UserStore {
   create(params: { email: string; passwordHash: string }): Promise<UserRecord>;
   updatePasswordHash(id: string, passwordHash: string): Promise<void>;
   updateEmail(id: string, email: string): Promise<void>;
+  listAll(): Promise<UserRecord[]>;
+  updateRole(id: string, role: string): Promise<UserRecord | null>;
 }

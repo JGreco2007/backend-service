@@ -15,6 +15,7 @@ import {
 
 export const userRole = pgEnum("user_role", ["admin", "agent"]);
 export const propertyStatus = pgEnum("property_status", ["available", "pending", "sold"]);
+export const inquiryStatus = pgEnum("inquiry_status", ["new", "contacted", "closed"]);
 
 export const users = pgTable(
   "users",
@@ -64,6 +65,9 @@ export const inquiries = pgTable(
     email: varchar("email", { length: 255 }).notNull(),
     phone: varchar("phone", { length: 50 }),
     message: text("message"),
+    // Agent-managed lead status — the only field an agent can update on an
+    // inquiry; the submitted contact details are never editable by them.
+    status: inquiryStatus("status").notNull().default("new"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

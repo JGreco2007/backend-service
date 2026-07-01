@@ -15,6 +15,13 @@
       "when": 1782945494120,
       "tag": "0001_next_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782946354602,
+      "tag": "0002_flawless_hobgoblin",
+      "breakpoints": true
     }
   ]
 }
