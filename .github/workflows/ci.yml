@@ -37,6 +37,14 @@ jobs:
   secret-scan:
     name: secret-scan
     runs-on: ubuntu-latest
+    # Default GITHUB_TOKEN permissions don't include reading a PR's commit
+    # list, which gitleaks-action needs to build its diff range — without
+    # this it fails with "Resource not accessible by integration" on every
+    # PR, not just the first push.
+    permissions:
+      contents: read
+      pull-requests: read
+      security-events: write # lets it upload the SARIF findings report
     steps:
       - uses: actions/checkout@v4
         with:
